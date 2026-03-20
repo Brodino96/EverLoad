@@ -2,8 +2,6 @@ package dev.brodino.elysiumsync;
 
 import dev.architectury.event.events.client.ClientLifecycleEvent;
 import dev.brodino.elysiumsync.command.CommandManager;
-import dev.brodino.elysiumsync.sync.SyncScheduler;
-import dev.brodino.elysiumsync.sync.SyncState;
 
 public final class ElysiumSyncClient {
     
