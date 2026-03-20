@@ -7,6 +7,7 @@ import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.ProgressMonitor;
+import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.FetchResult;
 
 import java.io.File;
@@ -43,10 +44,18 @@ public class GitSyncManager {
         File repoDir = this.repositoryDirectory.toFile();
         
         if (this.isRepositoryInitialized()) {
-            // Repository exists, pull updates
-            context.setStatusMessage("Pulling latest changes...");
-            ElysiumSync.LOGGER.info("Repository exists, pulling updates from: {}", repoDir);
-            this.pullRepository(branch, context);
+            // Check if the repository URL matches the configured URL
+            if (this.isRepositoryUrlMatching(repositoryUrl)) {
+                context.setStatusMessage("Pulling latest changes...");
+                ElysiumSync.LOGGER.info("Repository exists, pulling updates from: {}", repoDir);
+                this.pullRepository(branch, context);
+            } else {
+                String existingUrl = this.getExistingRemoteUrl();
+                ElysiumSync.LOGGER.info("Repository URL mismatch. Existing: {}, Configured: {}. Re-cloning...",  existingUrl, repositoryUrl);
+                context.setStatusMessage("Repository changed, re-cloning...");
+                this.cleanupRepository();
+                this.cloneRepository(repositoryUrl, branch, context);
+            }
         } else {
             // Repository doesn't exist, clone it
             context.setStatusMessage("Cloning repository...");
@@ -124,6 +133,56 @@ public class GitSyncManager {
         File gitDir = new File(repoDir, ".git");
 		return repoDir.exists() && gitDir.exists() && gitDir.isDirectory();
     }
+
+    private String getExistingRemoteUrl() {
+        if (!this.isRepositoryInitialized()) {
+            return null;
+        }
+        
+        try (Git existingGit = Git.open(this.repositoryDirectory.toFile())) {
+            StoredConfig config = existingGit.getRepository().getConfig();
+            return config.getString("remote", "origin", "url");
+        } catch (IOException e) {
+            ElysiumSync.LOGGER.warn("Failed to read remote URL from existing repository: {}", e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * Check if the configured repository URL matches the existing repository
+     * @param repositoryUrl The configured repository URL
+     * @return true if URLs match, false otherwise
+     */
+    private boolean isRepositoryUrlMatching(String repositoryUrl) {
+        String existingUrl = this.getExistingRemoteUrl();
+        if (existingUrl == null) {
+            return false;
+        }
+
+        String normalizedConfigUrl = this.normalizeGitUrl(repositoryUrl);
+        String normalizedExistingUrl = this.normalizeGitUrl(existingUrl);
+        
+        return normalizedConfigUrl.equalsIgnoreCase(normalizedExistingUrl);
+    }
+
+    /**
+     * Normalize a Git URL for comparison, removing trailing slashes and .git suffix
+     * @param url The URL to normalize
+     * @return The normalized URL
+     */
+    private String normalizeGitUrl(String url) {
+        if (url == null) {
+            return "";
+        }
+        String normalized = url.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        if (normalized.endsWith(".git")) {
+            normalized = normalized.substring(0, normalized.length() - 4);
+        }
+        return normalized;
+    }
     
     /**
      * Clean up repository directory (used after failed clone)
@@ -140,8 +199,11 @@ public class GitSyncManager {
     }
 
     private void deleteRecursively(Path path) throws IOException {
+        if (!Files.exists(path)) {
+            return;
+        }
         if (!Files.isDirectory(path)) {
-            Files.deleteIfExists(path);
+            Files.delete(path);
             return;
         }
         try (var stream = Files.list(path)) {
@@ -153,6 +215,8 @@ public class GitSyncManager {
                 }
             });
         }
+
+        Files.delete(path); // Deletes the directory after emptying
     }
 
     private int countFiles(Path directory) {
