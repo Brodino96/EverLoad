@@ -5,6 +5,9 @@ import dev.brodino.elysiumsync.util.AsyncExecutor;
 import net.minecraft.client.Minecraft;
 
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
 public class SyncScheduler {
@@ -132,5 +135,74 @@ public class SyncScheduler {
 
     public static SyncState getCurrentState() {
         return currentContext != null ? currentContext.getState() : SyncState.IDLE;
+    }
+
+    /**
+     * Perform a blocking sync operation. This method will block the calling thread
+     * until the sync completes or fails. Use this for early startup sync before
+     * other mods have a chance to load their scripts.
+     * @param repositoryUrl The repository URL to sync from
+     * @param branch The branch to sync
+     * @param timeoutSeconds Maximum time to wait for sync to complete
+     * @return true if sync completed successfully, false otherwise
+     */
+    public static boolean startBlockingSync(String repositoryUrl, String branch, int timeoutSeconds) {
+        // Check if sync is already in progress
+        if (currentContext != null && currentContext.getState().isActive()) {
+            ElysiumSync.LOGGER.warn("Sync already in progress, ignoring blocking sync request");
+            return false;
+        }
+
+        ElysiumSync.LOGGER.info("Starting BLOCKING sync: {} (branch: {})", repositoryUrl, branch);
+
+        currentContext = new SyncContext(repositoryUrl, branch, SyncContext.Type.STARTUP);
+        currentContext.setState(SyncState.IN_PROGRESS);
+
+        try {
+            gitManager = new GitSyncManager();
+            fileService = new FileSyncService();
+        } catch (Exception e) {
+            ElysiumSync.LOGGER.error("Failed to initialize sync services", e);
+            currentContext.setState(SyncState.FAILED);
+            currentContext.setLastError(e);
+            return false;
+        }
+
+        CountDownLatch latch = new CountDownLatch(1);
+        AtomicReference<Boolean> success = new AtomicReference<>(false);
+
+        currentSync = AsyncExecutor.execute(() -> {
+            try {
+                executeSync();
+                currentContext.setState(SyncState.COMPLETED);
+                ElysiumSync.LOGGER.info("Blocking sync completed successfully in {}s", currentContext.getElapsedSeconds());
+                success.set(true);
+            } catch (Exception e) {
+                currentContext.setState(SyncState.FAILED);
+                currentContext.setLastError(e);
+                ElysiumSync.LOGGER.error("Blocking sync failed after {}s: {}", currentContext.getElapsedSeconds(), e.getMessage(), e);
+                success.set(false);
+            } finally {
+                if (gitManager != null) {
+                    gitManager.close();
+                }
+                latch.countDown();
+            }
+        });
+
+        try {
+            boolean completed = latch.await(timeoutSeconds, TimeUnit.SECONDS);
+            if (!completed) {
+                ElysiumSync.LOGGER.error("Blocking sync timed out after {}s", timeoutSeconds);
+                cancelSync();
+                return false;
+            }
+            return success.get();
+        } catch (InterruptedException e) {
+            ElysiumSync.LOGGER.error("Blocking sync interrupted", e);
+            Thread.currentThread().interrupt();
+            cancelSync();
+            return false;
+        }
     }
 }

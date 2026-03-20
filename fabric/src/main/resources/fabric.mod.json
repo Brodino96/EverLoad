@@ -19,6 +19,9 @@
     ],
     "client": [
       "dev.brodino.elysiumsync.fabric.client.ElysiumsyncFabricClient"
+    ],
+    "preLaunch": [
+      "dev.brodino.elysiumsync.fabric.ElysiumsyncPreLaunch"
     ]
   },
   "mixins": [

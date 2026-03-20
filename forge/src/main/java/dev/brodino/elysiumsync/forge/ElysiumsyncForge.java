@@ -16,6 +16,10 @@ public final class ElysiumsyncForge {
 		// Common initialization
 		ElysiumSync.initialize();
 		
+		// Perform blocking sync during mod initialization
+		// This ensures files are synced BEFORE KubeJS or other mods load their scripts
+		ElysiumSync.performEarlySync();
+		
 		// Client-side initialization
 		if (FMLEnvironment.dist == Dist.CLIENT) {
 			ElysiumSyncClient.initialize();
