@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "id": "elysiumsync",
+  "version": "${version}",
+
+  "name": "ElysiumSync",
+  "description": "",
+  "authors": [],
+  "contact": {},
+
+  "license": "MIT",
+  "icon": "assets/elysiumsync/icon.png",
+
+  "environment": "*",
+  "entrypoints": {
+    "main": ["dev.brodino.elysiumsync.ElysiumSync"],
+    "client": ["dev.brodino.elysiumsync.client.ElysiumSyncClient"],
+    "preLaunch": ["dev.brodino.elysiumsync.ElysiumsyncPreLaunch"]
+  },
+
+  "mixins": [
+    "elysiumsync.mixins.json"
+  ],
+
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric-api": "*",
+    "minecraft": "${minecraft_version}",
+    "java": ">=17"
+  }
+}

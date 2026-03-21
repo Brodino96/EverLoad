@@ -1,6 +1,5 @@
-package dev.brodino.elysiumsync.fabric;
+package dev.brodino.elysiumsync;
 
-import dev.brodino.elysiumsync.ElysiumSync;
 import dev.brodino.elysiumsync.util.AsyncExecutor;
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
 import org.slf4j.Logger;

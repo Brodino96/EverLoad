@@ -2,14 +2,34 @@ package dev.brodino.elysiumsync;
 
 import dev.brodino.elysiumsync.sync.SyncScheduler;
 import dev.brodino.elysiumsync.util.AsyncExecutor;
+import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class ElysiumSync {
+public final class ElysiumSync implements ModInitializer {
 	private static final int BLOCKING_SYNC_TIMEOUT_SECONDS = 300; // 5 minutes
 	public static final String MOD_ID = "elysiumsync";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static final Config CONFIG = new Config();
+
+	@Override
+	public void onInitialize() {
+		initialize();
+		
+		// Check if pre-launch sync was already performed
+		if (ElysiumsyncPreLaunch.wasPreLaunchSyncPerformed()) {
+			if (ElysiumsyncPreLaunch.wasPreLaunchSyncSuccessful()) {
+				LOGGER.info("Pre-launch sync was successful, skipping initialization sync");
+			} else {
+				LOGGER.warn("Pre-launch sync failed, files may not be up to date");
+			}
+		} else {
+			// Fallback: perform blocking sync during mod initialization if pre-launch didn't run
+			// This ensures files are synced BEFORE KubeJS or other mods load their scripts
+			LOGGER.info("Pre-launch sync was not performed, running sync now");
+			performEarlySync();
+		}
+	}
 
 	public static void initialize() {
 		LOGGER.info("Initializing ElysiumSync");

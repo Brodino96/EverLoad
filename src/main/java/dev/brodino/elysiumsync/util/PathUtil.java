@@ -1,7 +1,7 @@
 package dev.brodino.elysiumsync.util;
 
-import dev.architectury.platform.Platform;
 import dev.brodino.elysiumsync.ElysiumSync;
+import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -13,7 +13,7 @@ public class PathUtil {
      * Get the Minecraft game directory
      */
     public static Path getGameDirectory() {
-        Path gameFolder = Platform.getGameFolder();
+        Path gameFolder = FabricLoader.getInstance().getGameDir();
         if (gameFolder == null) {
             throw new IllegalStateException("Game folder is not yet initialized");
         }

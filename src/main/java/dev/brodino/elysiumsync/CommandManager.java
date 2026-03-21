@@ -3,10 +3,10 @@ package dev.brodino.elysiumsync;
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import dev.architectury.event.events.common.CommandRegistrationEvent;
 import dev.brodino.elysiumsync.screen.SyncProgressScreen;
 import dev.brodino.elysiumsync.sync.SyncContext;
 import dev.brodino.elysiumsync.sync.SyncScheduler;
+import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
@@ -15,7 +15,7 @@ import net.minecraft.network.chat.Component;
 public class CommandManager {
 
     public static void initialize() {
-        CommandRegistrationEvent.EVENT.register((dispatcher, registry, selection) -> {
+        CommandRegistrationCallback.EVENT.register((dispatcher, registryAccess, environment) -> {
             register(dispatcher);
         });
     }
