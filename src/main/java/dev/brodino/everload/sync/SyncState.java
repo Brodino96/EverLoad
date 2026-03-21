@@ -1,4 +1,4 @@
-package dev.brodino.elysiumsync.sync;
+package dev.brodino.everload.sync;
 
 public enum SyncState {
     IDLE,

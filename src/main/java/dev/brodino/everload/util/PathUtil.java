@@ -1,6 +1,6 @@
-package dev.brodino.elysiumsync.util;
+package dev.brodino.everload.util;
 
-import dev.brodino.elysiumsync.ElysiumSync;
+import dev.brodino.everload.EverLoad;
 import net.fabricmc.loader.api.FabricLoader;
 
 import java.io.IOException;
@@ -21,11 +21,11 @@ public class PathUtil {
     }
     
     /**
-     * Get the ElysiumSync repository directory
+     * Get the EverLoad repository directory
      */
     public static Path getRepositoryDirectory() {
         return getGameDirectory()
-            .resolve(ElysiumSync.MOD_ID)
+            .resolve(EverLoad.MOD_ID)
             .resolve("repo");
     }
 

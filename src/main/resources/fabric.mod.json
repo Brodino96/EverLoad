@@ -1,27 +1,23 @@
 {
   "schemaVersion": 1,
-  "id": "elysiumsync",
+  "id": "everload",
   "version": "${version}",
-
-  "name": "ElysiumSync",
+  "name": "EverLoad",
   "description": "",
   "authors": [],
   "contact": {},
-
   "license": "MIT",
-  "icon": "assets/elysiumsync/icon.png",
-
+  "icon": "assets/everload/icon.png",
   "environment": "*",
   "entrypoints": {
-    "main": ["dev.brodino.elysiumsync.ElysiumSync"],
-    "client": ["dev.brodino.elysiumsync.client.ElysiumSyncClient"],
-    "preLaunch": ["dev.brodino.elysiumsync.ElysiumsyncPreLaunch"]
+    "main": [
+      "dev.brodino.everload.EverLoad"
+    ],
+    "client": ["dev.brodino.everload.client.EverLoadClient"],
+    "preLaunch": [
+      "dev.brodino.everload.EverLoadPreLaunch"
+    ]
   },
-
-  "mixins": [
-    "elysiumsync.mixins.json"
-  ],
-
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",

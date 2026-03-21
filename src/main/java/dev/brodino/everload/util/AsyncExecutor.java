@@ -1,6 +1,6 @@
-package dev.brodino.elysiumsync.util;
+package dev.brodino.everload.util;
 
-import dev.brodino.elysiumsync.ElysiumSync;
+import dev.brodino.everload.EverLoad;
 
 import java.util.concurrent.*;
 
@@ -12,18 +12,18 @@ public class AsyncExecutor {
 
     public static void initialize() {
         executorService = Executors.newFixedThreadPool(THREAD_POOL_SIZE, r -> {
-            Thread thread = new Thread(r, "ElysiumSync-Worker");
+            Thread thread = new Thread(r, "EverLoad-Worker");
             thread.setDaemon(true);
             return thread;
         });
 
         scheduledExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
-            Thread thread = new Thread(r, "ElysiumSync-Scheduler");
+            Thread thread = new Thread(r, "EverLoad-Scheduler");
             thread.setDaemon(true);
             return thread;
         });
 
-        ElysiumSync.LOGGER.info("AsyncExecutor initialized with {} worker threads", THREAD_POOL_SIZE);
+        EverLoad.LOGGER.info("AsyncExecutor initialized with {} worker threads", THREAD_POOL_SIZE);
     }
     
     /**
@@ -43,7 +43,7 @@ public class AsyncExecutor {
             return;
         }
 
-		ElysiumSync.LOGGER.info("Shutting down AsyncExecutor");
+		EverLoad.LOGGER.info("Shutting down AsyncExecutor");
 		executorService.shutdown();
 		scheduledExecutor.shutdown();
 

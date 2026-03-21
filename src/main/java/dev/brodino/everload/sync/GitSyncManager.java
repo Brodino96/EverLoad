@@ -1,7 +1,7 @@
-package dev.brodino.elysiumsync.sync;
+package dev.brodino.everload.sync;
 
-import dev.brodino.elysiumsync.ElysiumSync;
-import dev.brodino.elysiumsync.util.PathUtil;
+import dev.brodino.everload.EverLoad;
+import dev.brodino.everload.util.PathUtil;
 import org.eclipse.jgit.api.CloneCommand;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.PullCommand;
@@ -33,7 +33,7 @@ public class GitSyncManager {
      * @throws GitAPIException if git operations fail
      */
     public void sync(String repositoryUrl, String branch, SyncContext context) throws IOException, GitAPIException {
-        ElysiumSync.LOGGER.info("Starting Git sync: {} (branch: {})", repositoryUrl, branch);
+        EverLoad.LOGGER.info("Starting Git sync: {} (branch: {})", repositoryUrl, branch);
 
         if (!PathUtil.isValidGitUrl(repositoryUrl)) {
             throw new IllegalArgumentException("Invalid Git URL: " + repositoryUrl);
@@ -47,11 +47,11 @@ public class GitSyncManager {
             // Check if the repository URL matches the configured URL
             if (this.isRepositoryUrlMatching(repositoryUrl)) {
                 context.setStatusMessage("Pulling latest changes...");
-                ElysiumSync.LOGGER.info("Repository exists, pulling updates from: {}", repoDir);
+                EverLoad.LOGGER.info("Repository exists, pulling updates from: {}", repoDir);
                 this.pullRepository(branch, context);
             } else {
                 String existingUrl = this.getExistingRemoteUrl();
-                ElysiumSync.LOGGER.info("Repository URL mismatch. Existing: {}, Configured: {}. Re-cloning...",  existingUrl, repositoryUrl);
+                EverLoad.LOGGER.info("Repository URL mismatch. Existing: {}, Configured: {}. Re-cloning...",  existingUrl, repositoryUrl);
                 context.setStatusMessage("Repository changed, re-cloning...");
                 this.cleanupRepository();
                 this.cloneRepository(repositoryUrl, branch, context);
@@ -59,11 +59,11 @@ public class GitSyncManager {
         } else {
             // Repository doesn't exist, clone it
             context.setStatusMessage("Cloning repository...");
-            ElysiumSync.LOGGER.info("Cloning repository to: {}", repoDir);
+            EverLoad.LOGGER.info("Cloning repository to: {}", repoDir);
             this.cloneRepository(repositoryUrl, branch, context);
         }
         
-        ElysiumSync.LOGGER.info("Git sync completed successfully");
+        EverLoad.LOGGER.info("Git sync completed successfully");
     }
 
     private void cloneRepository(String repositoryUrl, String branch, SyncContext context) throws GitAPIException {
@@ -83,13 +83,13 @@ public class GitSyncManager {
         // If setDepth() is available in this version, it would be: .setDepth(1)
         // For now, we'll do a full clone to ensure compatibility
         
-        ElysiumSync.LOGGER.info("Executing clone command: {} -> {}", repositoryUrl, repoDir);
+        EverLoad.LOGGER.info("Executing clone command: {} -> {}", repositoryUrl, repoDir);
         
         try {
             git = cloneCommand.call();
-            ElysiumSync.LOGGER.info("Clone completed: {} files in repository", this.countFiles(repositoryDirectory));
+            EverLoad.LOGGER.info("Clone completed: {} files in repository", this.countFiles(repositoryDirectory));
         } catch (GitAPIException e) {
-            ElysiumSync.LOGGER.error("Clone failed: {}", e.getMessage(), e);
+            EverLoad.LOGGER.error("Clone failed: {}", e.getMessage(), e);
             this.cleanupRepository();
             throw e;
         }
@@ -109,21 +109,21 @@ public class GitSyncManager {
                 .setRemote("origin")
                 .setRemoteBranchName(branch);
         
-        ElysiumSync.LOGGER.info("Executing pull command for branch: {}", branch);
+        EverLoad.LOGGER.info("Executing pull command for branch: {}", branch);
         
         try {
             var result = pullCommand.call();
             
             if (result.isSuccessful()) {
-                ElysiumSync.LOGGER.info("Pull completed successfully");
+                EverLoad.LOGGER.info("Pull completed successfully");
                 if (result.getFetchResult() != null) {
                     this.logFetchResult(result.getFetchResult());
                 }
             } else {
-                ElysiumSync.LOGGER.warn("Pull completed with issues: {}", result);
+                EverLoad.LOGGER.warn("Pull completed with issues: {}", result);
             }
         } catch (GitAPIException e) {
-            ElysiumSync.LOGGER.error("Pull failed: {}", e.getMessage(), e);
+            EverLoad.LOGGER.error("Pull failed: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -143,7 +143,7 @@ public class GitSyncManager {
             StoredConfig config = existingGit.getRepository().getConfig();
             return config.getString("remote", "origin", "url");
         } catch (IOException e) {
-            ElysiumSync.LOGGER.warn("Failed to read remote URL from existing repository: {}", e.getMessage());
+            EverLoad.LOGGER.warn("Failed to read remote URL from existing repository: {}", e.getMessage());
             return null;
         }
     }
@@ -190,11 +190,11 @@ public class GitSyncManager {
     private void cleanupRepository() {
         try {
             if (Files.exists(repositoryDirectory)) {
-                ElysiumSync.LOGGER.info("Cleaning up failed repository at: {}", repositoryDirectory);
+                EverLoad.LOGGER.info("Cleaning up failed repository at: {}", repositoryDirectory);
                 this.deleteRecursively(repositoryDirectory);
             }
         } catch (IOException e) {
-            ElysiumSync.LOGGER.error("Failed to cleanup repository", e);
+            EverLoad.LOGGER.error("Failed to cleanup repository", e);
         }
     }
 
@@ -211,7 +211,7 @@ public class GitSyncManager {
                 try {
                     deleteRecursively(child);
                 } catch (IOException e) {
-                    ElysiumSync.LOGGER.error("Failed to delete: {}", child, e);
+                    EverLoad.LOGGER.error("Failed to delete: {}", child, e);
                 }
             });
         }
@@ -231,9 +231,9 @@ public class GitSyncManager {
     }
 
     private void logFetchResult(FetchResult result) {
-        ElysiumSync.LOGGER.info("Fetch result: {}", result.getMessages());
+        EverLoad.LOGGER.info("Fetch result: {}", result.getMessages());
         result.getTrackingRefUpdates().forEach(update -> {
-            ElysiumSync.LOGGER.info("  Updated ref: {} -> {}", 
+            EverLoad.LOGGER.info("  Updated ref: {} -> {}",
                 update.getRemoteName(), 
                 update.getResult());
         });
@@ -261,7 +261,7 @@ public class GitSyncManager {
         
         @Override
         public void start(int totalTasks) {
-            ElysiumSync.LOGGER.info("Git operation started: {} tasks", totalTasks);
+            EverLoad.LOGGER.info("Git operation started: {} tasks", totalTasks);
         }
         
         @Override
@@ -271,7 +271,7 @@ public class GitSyncManager {
             this.completed = 0;
             context.setStatusMessage(title);
             context.setProgress(0, totalWork > 0 ? totalWork : 100);
-            ElysiumSync.LOGGER.info("Task started: {} (total work: {})", title, totalWork);
+            EverLoad.LOGGER.info("Task started: {} (total work: {})", title, totalWork);
         }
         
         @Override
@@ -285,7 +285,7 @@ public class GitSyncManager {
         @Override
         public void endTask() {
             context.setProgress(totalWork, totalWork);
-            ElysiumSync.LOGGER.info("Task completed: {}", taskName);
+            EverLoad.LOGGER.info("Task completed: {}", taskName);
         }
         
         @Override

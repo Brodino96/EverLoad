@@ -1,9 +1,9 @@
-package dev.brodino.elysiumsync.screen;
+package dev.brodino.everload.screen;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import dev.brodino.elysiumsync.sync.SyncContext;
-import dev.brodino.elysiumsync.sync.SyncScheduler;
-import dev.brodino.elysiumsync.sync.SyncState;
+import dev.brodino.everload.sync.SyncContext;
+import dev.brodino.everload.sync.SyncScheduler;
+import dev.brodino.everload.sync.SyncState;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
@@ -25,7 +25,7 @@ public class SyncProgressScreen extends Screen {
     private static final long UPDATE_INTERVAL_MS = 50; // Update UI 20 times per second
     
     public SyncProgressScreen() {
-        super(Component.literal("ElysiumSync"));
+        super(Component.literal("EverLoad"));
     }
     
     @Override
@@ -55,7 +55,7 @@ public class SyncProgressScreen extends Screen {
         
         // Title
         drawCenteredText(poseStack, this.font, 
-            Component.literal("ElysiumSync").getVisualOrderText(), 
+            Component.literal("EverLoad").getVisualOrderText(),
             this.width / 2, 20, 0xFFFFFF);
         
         // Status message

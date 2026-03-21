@@ -1,4 +1,4 @@
-package dev.brodino.elysiumsync;
+package dev.brodino.everload;
 
 
 import com.google.gson.Gson;
@@ -24,10 +24,10 @@ public class Config {
 			if (!Files.exists(dataDirectory)) {
 				Files.createDirectories(dataDirectory);
 			}
-			this.configPath = dataDirectory.resolve(ElysiumSync.MOD_ID + ".json");
+			this.configPath = dataDirectory.resolve(EverLoad.MOD_ID + ".json");
 			this.load();
 		} catch (IOException e) {
-			ElysiumSync.LOGGER.error("Failed to load {}.json", ElysiumSync.MOD_ID);
+			EverLoad.LOGGER.error("Failed to load {}.json", EverLoad.MOD_ID);
 		}
 	}
 

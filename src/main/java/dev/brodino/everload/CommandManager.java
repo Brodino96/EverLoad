@@ -1,11 +1,11 @@
-package dev.brodino.elysiumsync;
+package dev.brodino.everload;
 
 import com.mojang.brigadier.CommandDispatcher;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import com.mojang.brigadier.context.CommandContext;
-import dev.brodino.elysiumsync.screen.SyncProgressScreen;
-import dev.brodino.elysiumsync.sync.SyncContext;
-import dev.brodino.elysiumsync.sync.SyncScheduler;
+import dev.brodino.everload.screen.SyncProgressScreen;
+import dev.brodino.everload.sync.SyncContext;
+import dev.brodino.everload.sync.SyncScheduler;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.minecraft.client.Minecraft;
 import net.minecraft.commands.CommandSourceStack;
@@ -21,9 +21,9 @@ public class CommandManager {
     }
 
     private static void register(CommandDispatcher<CommandSourceStack> dispatcher) {
-        ElysiumSync.LOGGER.info("Registering ElysiumSync commands");
+        EverLoad.LOGGER.info("Registering EverLoad commands");
         
-        dispatcher.register(Commands.literal("elysiumsync")
+        dispatcher.register(Commands.literal(EverLoad.MOD_ID)
             .then(getRefreshCommand())
             .then(getStatusCommand())
             .then(getReloadCommand())
@@ -40,8 +40,8 @@ public class CommandManager {
                 return 0;
             }
 
-            if (!ElysiumSync.CONFIG.hasRepository() || ElysiumSync.CONFIG.isDisabled()) {
-                sendMessage(context, "No repository configured! Edit config/elysiumsync.json", true);
+            if (!EverLoad.CONFIG.hasRepository() || EverLoad.CONFIG.isDisabled()) {
+                sendMessage(context, "No repository configured! Edit config/" + EverLoad.MOD_ID + ".json", true);
                 return 0;
             }
 
@@ -53,19 +53,19 @@ public class CommandManager {
                 mc.clearLevel();
             }
 
-            String repoUrl = ElysiumSync.CONFIG.getRepositoryUrl();
-            String branch = ElysiumSync.CONFIG.getBranch();
+            String repoUrl = EverLoad.CONFIG.getRepositoryUrl();
+            String branch = EverLoad.CONFIG.getBranch();
 
-            ElysiumSync.LOGGER.info("Manual refresh triggered: {} (branch: {})", repoUrl, branch);
+            EverLoad.LOGGER.info("Manual refresh triggered: {} (branch: {})", repoUrl, branch);
 
             mc.execute(() -> {
                 mc.setScreen(new SyncProgressScreen());
 
                 SyncScheduler.startSync(repoUrl, branch, SyncContext.Type.MANUAL, () -> {
-                    ElysiumSync.LOGGER.info("Manual refresh completed successfully");
+                    EverLoad.LOGGER.info("Manual refresh completed successfully");
                     mc.setScreen(null);
                 }, (error) -> {
-                    ElysiumSync.LOGGER.error("Manual refresh failed", error);
+                    EverLoad.LOGGER.error("Manual refresh failed", error);
                 });
             });
 
@@ -79,8 +79,8 @@ public class CommandManager {
 
             sendMessage(context, "State: " + SyncScheduler.getCurrentState(), false);
 
-            String repoUrl = ElysiumSync.CONFIG.getRepositoryUrl();
-            String branch = ElysiumSync.CONFIG.getBranch();
+            String repoUrl = EverLoad.CONFIG.getRepositoryUrl();
+            String branch = EverLoad.CONFIG.getBranch();
 
             if (repoUrl != null && !repoUrl.isEmpty()) {
                 sendMessage(context, "Repository: " + repoUrl, false);
@@ -101,7 +101,7 @@ public class CommandManager {
 
     private static LiteralArgumentBuilder<CommandSourceStack> getReloadCommand() {
         return Commands.literal("reload").executes(context -> {
-            if (ElysiumSync.CONFIG.reload()) {
+            if (EverLoad.CONFIG.reload()) {
                 sendMessage(context, "Config successfully reloaded", false);
                 return 1;
             } else {

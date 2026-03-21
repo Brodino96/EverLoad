@@ -1,6 +1,6 @@
-package dev.brodino.elysiumsync;
+package dev.brodino.everload;
 
-import dev.brodino.elysiumsync.util.AsyncExecutor;
+import dev.brodino.everload.util.AsyncExecutor;
 import net.fabricmc.loader.api.entrypoint.PreLaunchEntrypoint;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -10,32 +10,32 @@ import org.slf4j.LoggerFactory;
  * This ensures that files are synced from the repository before KubeJS
  * or any other mod has a chance to load their scripts.
  */
-public class ElysiumsyncPreLaunch implements PreLaunchEntrypoint {
+public class EverLoadPreLaunch implements PreLaunchEntrypoint {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger("elysiumsync");
+    private static final Logger LOGGER = LoggerFactory.getLogger("everload");
 
     private static boolean preLaunchSyncPerformed = false;
     private static boolean preLaunchSyncSuccessful = false;
     
     @Override
     public void onPreLaunch() {
-        LOGGER.info("ElysiumSync PreLaunch: Starting early sync to ensure files are ready before other mods");
+        LOGGER.info("EverLoad PreLaunch: Starting early sync to ensure files are ready before other mods");
         
         try {
             // Initialize AsyncExecutor early for pre-launch sync
             AsyncExecutor.initialize();
             
-            // Delegate to the main ElysiumSync early sync implementation
-            preLaunchSyncSuccessful = ElysiumSync.performEarlySync();
+            // Delegate to the main EverLoad early sync implementation
+            preLaunchSyncSuccessful = EverLoad.performEarlySync();
             preLaunchSyncPerformed = true;
             
             if (preLaunchSyncSuccessful) {
-                LOGGER.info("ElysiumSync PreLaunch: Sync completed successfully");
+                LOGGER.info("EverLoad PreLaunch: Sync completed successfully");
             } else {
-                LOGGER.warn("ElysiumSync PreLaunch: Sync failed or was skipped");
+                LOGGER.warn("EverLoad PreLaunch: Sync failed or was skipped");
             }
         } catch (Exception e) {
-            LOGGER.error("ElysiumSync PreLaunch: Failed to perform sync", e);
+            LOGGER.error("EverLoad PreLaunch: Failed to perform sync", e);
             preLaunchSyncPerformed = true;
             preLaunchSyncSuccessful = false;
         }

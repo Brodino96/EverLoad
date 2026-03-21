@@ -1,7 +1,7 @@
-package dev.brodino.elysiumsync.sync;
+package dev.brodino.everload.sync;
 
-import dev.brodino.elysiumsync.ElysiumSync;
-import dev.brodino.elysiumsync.util.AsyncExecutor;
+import dev.brodino.everload.EverLoad;
+import dev.brodino.everload.util.AsyncExecutor;
 import net.minecraft.client.Minecraft;
 
 import java.util.concurrent.CompletableFuture;
@@ -28,12 +28,12 @@ public class SyncScheduler {
     public static void startSync(String repositoryUrl, String branch, SyncContext.Type type, Runnable onSuccess, Consumer<Exception> onError) {
         // Check if sync is already in progress
         if (currentContext != null && currentContext.getState().isActive()) {
-            ElysiumSync.LOGGER.warn("Sync already in progress, ignoring new sync request");
+            EverLoad.LOGGER.warn("Sync already in progress, ignoring new sync request");
             CompletableFuture.completedFuture(null);
             return;
         }
         
-        ElysiumSync.LOGGER.info("Starting {} sync: {} (branch: {})", type, repositoryUrl, branch);
+        EverLoad.LOGGER.info("Starting {} sync: {} (branch: {})", type, repositoryUrl, branch);
 
         currentContext = new SyncContext(repositoryUrl, branch, type);
         currentContext.setState(SyncState.IN_PROGRESS);
@@ -42,7 +42,7 @@ public class SyncScheduler {
             gitManager = new GitSyncManager();
             fileService = new FileSyncService();
         } catch (Exception e) {
-            ElysiumSync.LOGGER.error("Failed to initialize sync services", e);
+            EverLoad.LOGGER.error("Failed to initialize sync services", e);
             currentContext.setState(SyncState.FAILED);
             currentContext.setLastError(e);
             if (onError != null) {
@@ -57,7 +57,7 @@ public class SyncScheduler {
                 executeSync();
 
                 currentContext.setState(SyncState.COMPLETED);
-                ElysiumSync.LOGGER.info("Sync completed successfully in {}s", 
+                EverLoad.LOGGER.info("Sync completed successfully in {}s",
                     currentContext.getElapsedSeconds());
 
                 if (onSuccess != null) {
@@ -67,7 +67,7 @@ public class SyncScheduler {
             } catch (Exception e) {
                 currentContext.setState(SyncState.FAILED);
                 currentContext.setLastError(e);
-                ElysiumSync.LOGGER.error("Sync failed after {}s: {}", 
+                EverLoad.LOGGER.error("Sync failed after {}s: {}",
                     currentContext.getElapsedSeconds(), e.getMessage(), e);
 
                 if (onError != null) {
@@ -93,7 +93,7 @@ public class SyncScheduler {
         
         // Check if cancelled
         if (currentContext.getState() == SyncState.CANCELLED) {
-            ElysiumSync.LOGGER.info("Sync cancelled after git operation");
+            EverLoad.LOGGER.info("Sync cancelled after git operation");
             return;
         }
         
@@ -103,7 +103,7 @@ public class SyncScheduler {
         
         // Check if cancelled
         if (currentContext.getState() == SyncState.CANCELLED) {
-            ElysiumSync.LOGGER.info("Sync cancelled after file copy");
+            EverLoad.LOGGER.info("Sync cancelled after file copy");
             return;
         }
         
@@ -115,7 +115,7 @@ public class SyncScheduler {
      */
     public static void cancelSync() {
         if (currentContext != null && currentContext.getState().isActive()) {
-            ElysiumSync.LOGGER.info("Cancelling sync operation");
+            EverLoad.LOGGER.info("Cancelling sync operation");
             currentContext.setState(SyncState.CANCELLED);
             currentContext.setStatusMessage("Cancelled by user");
             
@@ -149,11 +149,11 @@ public class SyncScheduler {
     public static boolean startBlockingSync(String repositoryUrl, String branch, int timeoutSeconds) {
         // Check if sync is already in progress
         if (currentContext != null && currentContext.getState().isActive()) {
-            ElysiumSync.LOGGER.warn("Sync already in progress, ignoring blocking sync request");
+            EverLoad.LOGGER.warn("Sync already in progress, ignoring blocking sync request");
             return false;
         }
 
-        ElysiumSync.LOGGER.info("Starting BLOCKING sync: {} (branch: {})", repositoryUrl, branch);
+        EverLoad.LOGGER.info("Starting BLOCKING sync: {} (branch: {})", repositoryUrl, branch);
 
         currentContext = new SyncContext(repositoryUrl, branch, SyncContext.Type.STARTUP);
         currentContext.setState(SyncState.IN_PROGRESS);
@@ -162,7 +162,7 @@ public class SyncScheduler {
             gitManager = new GitSyncManager();
             fileService = new FileSyncService();
         } catch (Exception e) {
-            ElysiumSync.LOGGER.error("Failed to initialize sync services", e);
+            EverLoad.LOGGER.error("Failed to initialize sync services", e);
             currentContext.setState(SyncState.FAILED);
             currentContext.setLastError(e);
             return false;
@@ -175,12 +175,12 @@ public class SyncScheduler {
             try {
                 executeSync();
                 currentContext.setState(SyncState.COMPLETED);
-                ElysiumSync.LOGGER.info("Blocking sync completed successfully in {}s", currentContext.getElapsedSeconds());
+                EverLoad.LOGGER.info("Blocking sync completed successfully in {}s", currentContext.getElapsedSeconds());
                 success.set(true);
             } catch (Exception e) {
                 currentContext.setState(SyncState.FAILED);
                 currentContext.setLastError(e);
-                ElysiumSync.LOGGER.error("Blocking sync failed after {}s: {}", currentContext.getElapsedSeconds(), e.getMessage(), e);
+                EverLoad.LOGGER.error("Blocking sync failed after {}s: {}", currentContext.getElapsedSeconds(), e.getMessage(), e);
                 success.set(false);
             } finally {
                 if (gitManager != null) {
@@ -193,13 +193,13 @@ public class SyncScheduler {
         try {
             boolean completed = latch.await(timeoutSeconds, TimeUnit.SECONDS);
             if (!completed) {
-                ElysiumSync.LOGGER.error("Blocking sync timed out after {}s", timeoutSeconds);
+                EverLoad.LOGGER.error("Blocking sync timed out after {}s", timeoutSeconds);
                 cancelSync();
                 return false;
             }
             return success.get();
         } catch (InterruptedException e) {
-            ElysiumSync.LOGGER.error("Blocking sync interrupted", e);
+            EverLoad.LOGGER.error("Blocking sync interrupted", e);
             Thread.currentThread().interrupt();
             cancelSync();
             return false;

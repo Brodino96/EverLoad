@@ -1,11 +1,11 @@
-package dev.brodino.elysiumsync.client;
+package dev.brodino.everload.client;
 
-import dev.brodino.elysiumsync.CommandManager;
-import dev.brodino.elysiumsync.ElysiumSync;
+import dev.brodino.everload.CommandManager;
+import dev.brodino.everload.EverLoad;
 import net.fabricmc.api.ClientModInitializer;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 
-public final class ElysiumSyncClient implements ClientModInitializer {
+public final class EverLoadClient implements ClientModInitializer {
     
     @Override
     public void onInitializeClient() {
@@ -13,10 +13,10 @@ public final class ElysiumSyncClient implements ClientModInitializer {
     }
     
     public static void initialize() {
-        ElysiumSync.LOGGER.info("Initializing ElysiumSync client");
+        EverLoad.LOGGER.info("Initializing EverLoad client");
 
         ClientLifecycleEvents.CLIENT_STOPPING.register((client) -> {
-            ElysiumSync.shutdown();
+            EverLoad.shutdown();
         });
 
         CommandManager.initialize();

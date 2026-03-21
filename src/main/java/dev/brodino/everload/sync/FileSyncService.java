@@ -1,7 +1,7 @@
-package dev.brodino.elysiumsync.sync;
+package dev.brodino.everload.sync;
 
-import dev.brodino.elysiumsync.ElysiumSync;
-import dev.brodino.elysiumsync.util.PathUtil;
+import dev.brodino.everload.EverLoad;
+import dev.brodino.everload.util.PathUtil;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.IOException;
@@ -30,7 +30,7 @@ public class FileSyncService {
      */
     public void syncFiles(SyncContext context) throws IOException {
         context.setStatusMessage("Scanning repository files...");
-        ElysiumSync.LOGGER.info("Starting file sync from {} to {}", repositoryRoot, instanceRoot);
+        EverLoad.LOGGER.info("Starting file sync from {} to {}", repositoryRoot, instanceRoot);
 
         List<Path> filesToCopy = this.collectFiles();
         int totalFiles = filesToCopy.size();
@@ -39,10 +39,10 @@ public class FileSyncService {
         context.setFilesCopied(0);
         context.setStatusMessage("Copying files to instance...");
         
-        ElysiumSync.LOGGER.info("Found {} files to sync", totalFiles);
+        EverLoad.LOGGER.info("Found {} files to sync", totalFiles);
         
         if (totalFiles == 0) {
-            ElysiumSync.LOGGER.warn("No files found in repository to sync");
+            EverLoad.LOGGER.warn("No files found in repository to sync");
             return;
         }
         
@@ -53,7 +53,7 @@ public class FileSyncService {
         for (Path sourceFile : filesToCopy) {
             // Check if cancelled
             if (context.getState() == SyncState.CANCELLED) {
-                ElysiumSync.LOGGER.info("File sync cancelled by user");
+                EverLoad.LOGGER.info("File sync cancelled by user");
                 break;
             }
             
@@ -68,17 +68,17 @@ public class FileSyncService {
                 
                 // Log every 10 files or at milestones
                 if (copied % 10 == 0 || copied == totalFiles) {
-                    ElysiumSync.LOGGER.info("Synced {}/{} files ({} MB)", 
+                    EverLoad.LOGGER.info("Synced {}/{} files ({} MB)",
                         copied, totalFiles, totalBytes / 1024 / 1024);
                 }
                 
             } catch (IOException e) {
-                ElysiumSync.LOGGER.error("Failed to copy file: {}", sourceFile, e);
+                EverLoad.LOGGER.error("Failed to copy file: {}", sourceFile, e);
                 // Continue with other files
             }
         }
         
-        ElysiumSync.LOGGER.info("File sync completed: {} files, {} MB", 
+        EverLoad.LOGGER.info("File sync completed: {} files, {} MB",
             copied, totalBytes / 1024 / 1024);
         context.setStatusMessage("File sync completed");
     }
@@ -90,7 +90,7 @@ public class FileSyncService {
         List<Path> files = new ArrayList<>();
         
         if (!Files.exists(repositoryRoot)) {
-            ElysiumSync.LOGGER.warn("Repository directory does not exist: {}", repositoryRoot);
+            EverLoad.LOGGER.warn("Repository directory does not exist: {}", repositoryRoot);
             return files;
         }
         
@@ -137,7 +137,7 @@ public class FileSyncService {
         
         long size = Files.size(destination);
         
-        ElysiumSync.LOGGER.debug("Copied: {} -> {} ({} bytes)", 
+        EverLoad.LOGGER.debug("Copied: {} -> {} ({} bytes)",
             sourceFile.getFileName(), relativePath, size);
         
         return size;

@@ -1,14 +1,14 @@
-package dev.brodino.elysiumsync;
+package dev.brodino.everload;
 
-import dev.brodino.elysiumsync.sync.SyncScheduler;
-import dev.brodino.elysiumsync.util.AsyncExecutor;
+import dev.brodino.everload.sync.SyncScheduler;
+import dev.brodino.everload.util.AsyncExecutor;
 import net.fabricmc.api.ModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public final class ElysiumSync implements ModInitializer {
+public final class EverLoad implements ModInitializer {
 	private static final int BLOCKING_SYNC_TIMEOUT_SECONDS = 300; // 5 minutes
-	public static final String MOD_ID = "elysiumsync";
+	public static final String MOD_ID = "everload";
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_ID);
 	public static final Config CONFIG = new Config();
 
@@ -17,8 +17,8 @@ public final class ElysiumSync implements ModInitializer {
 		initialize();
 		
 		// Check if pre-launch sync was already performed
-		if (ElysiumsyncPreLaunch.wasPreLaunchSyncPerformed()) {
-			if (ElysiumsyncPreLaunch.wasPreLaunchSyncSuccessful()) {
+		if (EverLoadPreLaunch.wasPreLaunchSyncPerformed()) {
+			if (EverLoadPreLaunch.wasPreLaunchSyncSuccessful()) {
 				LOGGER.info("Pre-launch sync was successful, skipping initialization sync");
 			} else {
 				LOGGER.warn("Pre-launch sync failed, files may not be up to date");
@@ -32,7 +32,7 @@ public final class ElysiumSync implements ModInitializer {
 	}
 
 	public static void initialize() {
-		LOGGER.info("Initializing ElysiumSync");
+		LOGGER.info("Initializing EverLoad");
 		AsyncExecutor.initialize();
 	}
 	
@@ -76,7 +76,7 @@ public final class ElysiumSync implements ModInitializer {
 	}
 	
 	public static void shutdown() {
-		LOGGER.info("Shutting down ElysiumSync");
+		LOGGER.info("Shutting down EverLoad");
 		AsyncExecutor.shutdown();
 	}
 }
