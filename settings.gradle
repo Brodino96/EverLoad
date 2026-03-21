@@ -7,7 +7,7 @@ pluginManagement {
     }
 }
 
-rootProject.name = 'elysiumsync'
+rootProject.name = 'ElysiumSync'
 
 include 'common'
 include 'fabric'
