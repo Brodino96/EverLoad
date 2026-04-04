@@ -19,6 +19,8 @@ public class SyncContext {
     private int totalFiles;
     private long bytesCopied;
     private Exception lastError;
+    private FileChanges fileChanges;
+    private boolean userAcceptedChanges;
     
     public SyncContext(String repositoryUrl, String branch, Type type) {
         this.repositoryUrl = repositoryUrl;
@@ -32,6 +34,8 @@ public class SyncContext {
         this.filesCopied = 0;
         this.totalFiles = 0;
         this.bytesCopied = 0;
+        this.fileChanges = null;
+        this.userAcceptedChanges = false;
     }
 
     public long getElapsedSeconds() {
@@ -100,6 +104,22 @@ public class SyncContext {
     
     public void setLastError(Exception lastError) {
         this.lastError = lastError;
+    }
+    
+    public FileChanges getFileChanges() {
+        return fileChanges;
+    }
+    
+    public void setFileChanges(FileChanges fileChanges) {
+        this.fileChanges = fileChanges;
+    }
+    
+    public boolean isUserAcceptedChanges() {
+        return userAcceptedChanges;
+    }
+    
+    public void setUserAcceptedChanges(boolean userAcceptedChanges) {
+        this.userAcceptedChanges = userAcceptedChanges;
     }
     
     @Override

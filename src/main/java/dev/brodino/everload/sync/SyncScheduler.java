@@ -1,6 +1,7 @@
 package dev.brodino.everload.sync;
 
 import dev.brodino.everload.EverLoad;
+import dev.brodino.everload.ui.ChangeConfirmationDialog;
 import dev.brodino.everload.util.AsyncExecutor;
 import net.minecraft.client.Minecraft;
 
@@ -97,7 +98,55 @@ public class SyncScheduler {
             return;
         }
         
-        // Step 2: File copying
+        // Step 2: Detect changes and ask for user confirmation
+        FileChanges changes = gitManager.getChangedFiles();
+        currentContext.setFileChanges(changes);
+        
+        if (changes.hasChanges()) {
+            // Show confirmation dialog
+            currentContext.setState(SyncState.AWAITING_CONFIRMATION);
+            currentContext.setStatusMessage("Waiting for user confirmation...");
+            
+            EverLoad.LOGGER.info("Showing confirmation dialog for {} changes", changes.totalChanges());
+            
+            ChangeConfirmationDialog dialog = new ChangeConfirmationDialog(
+                    changes, 
+                    currentContext.getRepositoryUrl()
+            );
+            
+            boolean accepted = dialog.showAndWait();
+            currentContext.setUserAcceptedChanges(accepted);
+            
+            if (!accepted) {
+                // User declined - revert the changes
+                EverLoad.LOGGER.info("User declined changes, reverting...");
+                currentContext.setStatusMessage("Reverting changes...");
+                
+                try {
+                    gitManager.revertToPreSyncState();
+                    EverLoad.LOGGER.info("Successfully reverted to pre-sync state");
+                } catch (Exception e) {
+                    EverLoad.LOGGER.error("Failed to revert changes: {}", e.getMessage(), e);
+                }
+                
+                currentContext.setState(SyncState.CANCELLED);
+                currentContext.setStatusMessage("Changes declined by user");
+                return;
+            }
+            
+            EverLoad.LOGGER.info("User accepted changes, proceeding with file copy");
+            currentContext.setState(SyncState.IN_PROGRESS);
+        } else {
+            EverLoad.LOGGER.info("No changes detected, skipping confirmation");
+            currentContext.setUserAcceptedChanges(true); // Auto-accept when no changes
+        }
+        
+        // Check if cancelled (could have been cancelled during confirmation)
+        if (currentContext.getState() == SyncState.CANCELLED) {
+            return;
+        }
+        
+        // Step 3: File copying (only if changes were accepted or there were no changes)
         currentContext.setStatusMessage("Copying files to instance...");
         fileService.syncFiles(currentContext);
         
