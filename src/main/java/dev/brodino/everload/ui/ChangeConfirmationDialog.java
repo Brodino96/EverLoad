@@ -14,9 +14,9 @@ import java.util.concurrent.atomic.AtomicBoolean;
 // 100% AI generated
 public class ChangeConfirmationDialog {
 	
-	private static final int DIALOG_WIDTH = 600;
-	private static final int DIALOG_HEIGHT = 500;
-	private static final int MAX_FILES_PER_CATEGORY = 100;
+	private static final int DIALOG_WIDTH = 800;
+	private static final int DIALOG_HEIGHT = 900;
+	private static final int MAX_FILES_PER_CATEGORY = Integer.MAX_VALUE;
 	
 	private final FileChanges changes;
 	private final String repositoryUrl;
