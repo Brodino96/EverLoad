@@ -61,22 +61,42 @@ public class GitSyncManager {
         this.wasFreshClone = false;
         
         if (this.isRepositoryInitialized()) {
-            // Capture HEAD before pull for change detection
-            this.preSyncHead = this.captureHeadCommit();
-            
-            // Check if the repository URL matches the configured URL
-            if (this.isRepositoryUrlMatching(repositoryUrl)) {
-                context.setStatusMessage("Pulling latest changes...");
-                EverLoad.LOGGER.info("Repository exists, pulling updates from: {}", repoDir);
-                this.pullRepository(branch, context);
-            } else {
-                String existingUrl = this.getExistingRemoteUrl();
-                EverLoad.LOGGER.info("Repository URL mismatch. Existing: {}, Configured: {}. Re-cloning...",  existingUrl, repositoryUrl);
-                context.setStatusMessage("Repository changed, re-cloning...");
-                this.cleanupRepository();
-                this.preSyncHead = null; // No previous state for re-clone
-                this.wasFreshClone = true;
-                this.cloneRepository(repositoryUrl, branch, context);
+            // Open the repository once and reuse the handle for all read operations,
+            // so we can close it explicitly before any cleanup (critical on Windows
+            // where open pack-file handles block deletion).
+            Git existingGit = null;
+            try {
+                existingGit = Git.open(repoDir);
+
+                // Capture HEAD before pull for change detection
+                this.preSyncHead = this.captureHeadCommit(existingGit);
+
+                String existingUrl = this.readRemoteUrl(existingGit);
+                boolean urlMatches = this.isUrlMatching(repositoryUrl, existingUrl);
+
+                if (urlMatches) {
+                    // Keep the handle open for the pull
+                    this.git = existingGit;
+                    existingGit = null; // ownership transferred – don't close in finally
+                    context.setStatusMessage("Pulling latest changes...");
+                    EverLoad.LOGGER.info("Repository exists, pulling updates from: {}", repoDir);
+                    this.pullRepository(branch, context);
+                } else {
+                    EverLoad.LOGGER.info("Repository URL mismatch. Existing: {}, Configured: {}. Re-cloning...", existingUrl, repositoryUrl);
+                    context.setStatusMessage("Repository changed, re-cloning...");
+                    // Close ALL handles before attempting to delete on Windows
+                    existingGit.close();
+                    existingGit = null;
+                    this.closeGit();
+                    this.cleanupRepository();
+                    this.preSyncHead = null; // No previous state for re-clone
+                    this.wasFreshClone = true;
+                    this.cloneRepository(repositoryUrl, branch, context);
+                }
+            } finally {
+                if (existingGit != null) {
+                    existingGit.close();
+                }
             }
         } else {
             // Repository doesn't exist, clone it
@@ -89,7 +109,15 @@ public class GitSyncManager {
         EverLoad.LOGGER.info("Git sync completed successfully");
     }
 
-    private void cloneRepository(String repositoryUrl, String branch, SyncContext context) throws GitAPIException {
+    /** Close the cached {@link #git} instance and null it out. */
+    private void closeGit() {
+        if (this.git != null) {
+            this.git.close();
+            this.git = null;
+        }
+    }
+
+    private void cloneRepository(String repositoryUrl, String branch, SyncContext context) throws IOException, GitAPIException {
         File repoDir = this.repositoryDirectory.toFile();
         
         // Create progress monitor
@@ -113,14 +141,17 @@ public class GitSyncManager {
             EverLoad.LOGGER.info("Clone completed: {} files in repository", this.countFiles(repositoryDirectory));
         } catch (GitAPIException e) {
             EverLoad.LOGGER.error("Clone failed: {}", e.getMessage(), e);
-            this.cleanupRepository();
+            try {
+                this.cleanupRepository();
+            } catch (IOException cleanupEx) {
+                EverLoad.LOGGER.error("Failed to cleanup after failed clone: {}", cleanupEx.getMessage(), cleanupEx);
+            }
             throw e;
         }
     }
 
     private void pullRepository(String branch, SyncContext context) throws IOException, GitAPIException {
-        // Open existing repository
-        git = Git.open(repositoryDirectory.toFile());
+        // git is already open and assigned by the caller (sync)
         
         // Create progress monitor
         JGitProgressMonitor progressMonitor = new JGitProgressMonitor(context);
@@ -157,35 +188,25 @@ public class GitSyncManager {
 		return repoDir.exists() && gitDir.exists() && gitDir.isDirectory();
     }
 
-    private String getExistingRemoteUrl() {
-        if (!this.isRepositoryInitialized()) {
-            return null;
-        }
-        
-        try (Git existingGit = Git.open(this.repositoryDirectory.toFile())) {
-            StoredConfig config = existingGit.getRepository().getConfig();
+    /** Read the remote "origin" URL from an already-open Git instance. */
+    private String readRemoteUrl(Git openGit) {
+        try {
+            StoredConfig config = openGit.getRepository().getConfig();
             return config.getString("remote", "origin", "url");
-        } catch (IOException e) {
+        } catch (Exception e) {
             EverLoad.LOGGER.warn("Failed to read remote URL from existing repository: {}", e.getMessage());
             return null;
         }
     }
 
     /**
-     * Check if the configured repository URL matches the existing repository
-     * @param repositoryUrl The configured repository URL
-     * @return true if URLs match, false otherwise
+     * Check if the configured repository URL matches an existing remote URL.
      */
-    private boolean isRepositoryUrlMatching(String repositoryUrl) {
-        String existingUrl = this.getExistingRemoteUrl();
+    private boolean isUrlMatching(String repositoryUrl, String existingUrl) {
         if (existingUrl == null) {
             return false;
         }
-
-        String normalizedConfigUrl = this.normalizeGitUrl(repositoryUrl);
-        String normalizedExistingUrl = this.normalizeGitUrl(existingUrl);
-        
-        return normalizedConfigUrl.equalsIgnoreCase(normalizedExistingUrl);
+        return this.normalizeGitUrl(repositoryUrl).equalsIgnoreCase(this.normalizeGitUrl(existingUrl));
     }
 
     /**
@@ -208,16 +229,19 @@ public class GitSyncManager {
     }
     
     /**
-     * Clean up repository directory (used after failed clone)
+     * Clean up repository directory. Throws if the directory still exists after deletion
+     * (e.g. due to lingering Windows file locks), so callers can fail fast instead of
+     * attempting a clone into a non-empty directory.
      */
-    private void cleanupRepository() {
-        try {
+    private void cleanupRepository() throws IOException {
+        if (Files.exists(repositoryDirectory)) {
+            EverLoad.LOGGER.info("Cleaning up failed repository at: {}", repositoryDirectory);
+            this.deleteRecursively(repositoryDirectory);
             if (Files.exists(repositoryDirectory)) {
-                EverLoad.LOGGER.info("Cleaning up failed repository at: {}", repositoryDirectory);
-                this.deleteRecursively(repositoryDirectory);
+                throw new IOException(
+                    "Failed to fully remove repository directory (file handles still open?): "
+                    + repositoryDirectory);
             }
-        } catch (IOException e) {
-            EverLoad.LOGGER.error("Failed to cleanup repository", e);
         }
     }
 
@@ -226,7 +250,7 @@ public class GitSyncManager {
             return;
         }
         if (!Files.isDirectory(path)) {
-            Files.delete(path);
+            deleteWithRetry(path);
             return;
         }
         try (var stream = Files.list(path)) {
@@ -240,6 +264,39 @@ public class GitSyncManager {
         }
 
         Files.delete(path); // Deletes the directory after emptying
+    }
+
+    /**
+     * Delete a single file, retrying a few times on Windows where JGit may keep
+     * memory-mapped pack files open briefly after {@link Git#close()}.
+     * Also attempts to mark the file writable before deletion, since JGit sometimes
+     * creates read-only pack files.
+     */
+    private void deleteWithRetry(Path path) throws IOException {
+        final int MAX_RETRIES = 5;
+        final long RETRY_DELAY_MS = 200;
+
+        path.toFile().setWritable(true);
+
+        IOException lastException = null;
+        for (int attempt = 0; attempt < MAX_RETRIES; attempt++) {
+            try {
+                Files.delete(path);
+                return;
+            } catch (java.nio.file.AccessDeniedException e) {
+                lastException = e;
+                EverLoad.LOGGER.warn("Delete attempt {}/{} failed (access denied), retrying: {}",
+                        attempt + 1, MAX_RETRIES, path);
+                try {
+                    Thread.sleep(RETRY_DELAY_MS);
+                } catch (InterruptedException ie) {
+                    Thread.currentThread().interrupt();
+                    throw e;
+                }
+                path.toFile().setWritable(true);
+            }
+        }
+        throw lastException;
     }
 
     private int countFiles(Path directory) {
@@ -263,16 +320,12 @@ public class GitSyncManager {
     }
     
     /**
-     * Capture the current HEAD commit ID for later comparison.
-     * @return The ObjectId of HEAD, or null if repository is not initialized
+     * Capture the current HEAD commit ID from an already-open Git instance.
+     * @return The ObjectId of HEAD, or null if unavailable
      */
-    private ObjectId captureHeadCommit() {
-        if (!this.isRepositoryInitialized()) {
-            return null;
-        }
-        
-        try (Git tempGit = Git.open(repositoryDirectory.toFile())) {
-            ObjectId head = tempGit.getRepository().resolve("HEAD");
+    private ObjectId captureHeadCommit(Git openGit) {
+        try {
+            ObjectId head = openGit.getRepository().resolve("HEAD");
             if (head != null) {
                 EverLoad.LOGGER.info("Captured pre-sync HEAD: {}", head.getName());
             }
@@ -321,7 +374,7 @@ public class GitSyncManager {
         }
     }
 
-    public void revertToPreSyncState() throws GitAPIException {
+    public void revertToPreSyncState() throws IOException, GitAPIException {
         if (this.wasFreshClone) {
             // For fresh clones, we delete the entire repository
             EverLoad.LOGGER.info("Reverting fresh clone by deleting repository");
