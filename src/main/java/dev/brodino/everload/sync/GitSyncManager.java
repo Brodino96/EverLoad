@@ -128,11 +128,8 @@ public class GitSyncManager {
                 .setDirectory(repoDir)
                 .setBranch(branch)
                 .setCloneAllBranches(false) // Only specified branch
-                .setProgressMonitor(progressMonitor);
-        
-        // Note: Shallow clone (depth=1) may not be available in JGit 5.13.3
-        // If setDepth() is available in this version, it would be: .setDepth(1)
-        // For now, we'll do a full clone to ensure compatibility
+                .setProgressMonitor(progressMonitor)
+                .setDepth(1);
         
         EverLoad.LOGGER.info("Executing clone command: {} -> {}", repositoryUrl, repoDir);
         
