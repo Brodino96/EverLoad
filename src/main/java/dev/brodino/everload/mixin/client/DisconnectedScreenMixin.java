@@ -35,7 +35,7 @@ public abstract class DisconnectedScreenMixin extends Screen {
             return;
         }
 
-        int buttonWidth = 200;
+        int buttonWidth = 100;
         int buttonHeight = 20;
         int margin = 8;
         int centerX = this.width - buttonWidth - margin;
