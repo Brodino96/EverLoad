@@ -5,23 +5,37 @@ import dev.brodino.everload.sync.FileChanges;
 
 import javax.swing.*;
 import javax.swing.border.EmptyBorder;
+import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
+import java.awt.event.FocusEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-// 100% AI generated
 public class ChangeConfirmationDialog {
-	
+
 	private static final int DIALOG_WIDTH = 800;
-	private static final int DIALOG_HEIGHT = 900;
-	private static final int MAX_FILES_PER_CATEGORY = Integer.MAX_VALUE;
-	
+	private static final int DIALOG_HEIGHT = 400;
+
+	// --- Dark Mode Palette ---
+	private static class DarkTheme {
+		static final Color BG_DARK = new Color(30, 30, 30);
+		static final Color BG_LIGHTER = new Color(45, 45, 48);
+		static final Color FG_TEXT = new Color(220, 220, 220);
+		static final Color FG_SUBTLE = new Color(150, 150, 150);
+		static final Color BORDER = new Color(60, 60, 60);
+
+		static final Color ACCENT_GREEN = new Color(75, 181, 67);
+		static final Color ACCENT_YELLOW = new Color(229, 192, 123);
+		static final Color ACCENT_RED = new Color(244, 71, 71);
+		static final Color ACCENT_CYAN = new Color(86, 156, 214);
+	}
+
 	private final FileChanges changes;
 	private final String repositoryUrl;
 	private boolean userAccepted = false;
-	
+
 	/**
 	 * Create a new confirmation dialog for the given changes.
 	 * @param changes The file changes to display
@@ -31,7 +45,7 @@ public class ChangeConfirmationDialog {
 		this.changes = changes;
 		this.repositoryUrl = repositoryUrl;
 	}
-	
+
 	/**
 	 * Show the dialog and wait for user input.
 	 * This method blocks until the user clicks Accept or Decline.
@@ -39,160 +53,111 @@ public class ChangeConfirmationDialog {
 	 */
 	public boolean showAndWait() {
 		AtomicBoolean result = new AtomicBoolean(false);
-		
 		try {
-			// Ensure we run on the Swing EDT
 			if (SwingUtilities.isEventDispatchThread()) {
 				result.set(showDialogOnEDT());
 			} else {
 				SwingUtilities.invokeAndWait(() -> result.set(showDialogOnEDT()));
 			}
-		} catch (InterruptedException e) {
-			EverLoad.LOGGER.error("Dialog interrupted", e);
-			Thread.currentThread().interrupt();
-			return false;
-		} catch (InvocationTargetException e) {
-			EverLoad.LOGGER.error("Error showing confirmation dialog", e.getCause());
+		} catch (InterruptedException | InvocationTargetException e) {
+			EverLoad.LOGGER.error("Error showing confirmation dialog", e);
 			return false;
 		}
-		
 		return result.get();
 	}
-	
+
 	/**
 	 * Create and show the dialog on the EDT.
 	 */
 	private boolean showDialogOnEDT() {
-		// Set system look and feel for native appearance
-		try {
-			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-		} catch (Exception e) {
-			// Fall back to default look and feel
-			EverLoad.LOGGER.warn("Could not set system look and feel: {}", e.getMessage());
-		}
-		
-		// Create the dialog
-		JDialog dialog = new JDialog((Frame) null, "EverLoad - Review Changes", true);
+		JDialog dialog = new JDialog((Frame) null, "EverLoad - Review Changes", Dialog.ModalityType.APPLICATION_MODAL);
 		dialog.setDefaultCloseOperation(JDialog.DISPOSE_ON_CLOSE);
+		dialog.setPreferredSize(new Dimension(DIALOG_WIDTH, DIALOG_HEIGHT));
 		dialog.setSize(DIALOG_WIDTH, DIALOG_HEIGHT);
-		dialog.setLocationRelativeTo(null); // Center on screen
+		dialog.setLocationRelativeTo(null);
+		dialog.requestFocus();
+		dialog.requestFocusInWindow(FocusEvent.Cause.ACTIVATION);
 		dialog.setResizable(true);
-		
-		// Create main panel
+
 		JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
+		mainPanel.setBackground(DarkTheme.BG_DARK);
 		mainPanel.setBorder(new EmptyBorder(15, 15, 15, 15));
-		
-		// Header
-		JPanel headerPanel = createHeaderPanel();
-		mainPanel.add(headerPanel, BorderLayout.NORTH);
-		
-		// Changes list
-		JScrollPane scrollPane = createChangesScrollPane();
-		mainPanel.add(scrollPane, BorderLayout.CENTER);
-		
-		// Buttons
-		JPanel buttonPanel = createButtonPanel(dialog);
-		mainPanel.add(buttonPanel, BorderLayout.SOUTH);
-		
+
+		mainPanel.add(createHeaderPanel(), BorderLayout.NORTH);
+		mainPanel.add(createChangesScrollPane(), BorderLayout.CENTER);
+		mainPanel.add(createButtonPanel(dialog), BorderLayout.SOUTH);
+
 		dialog.setContentPane(mainPanel);
-		
-		// Handle window close as decline
 		dialog.addWindowListener(new java.awt.event.WindowAdapter() {
 			@Override
 			public void windowClosing(java.awt.event.WindowEvent e) {
 				userAccepted = false;
 			}
 		});
-		
-		// Show dialog (blocks until closed)
+		dialog.pack();
 		dialog.setVisible(true);
-		
 		return userAccepted;
 	}
-	
 	/**
 	 * Create the header panel with title and summary.
 	 */
 	private JPanel createHeaderPanel() {
 		JPanel panel = new JPanel();
+		panel.setOpaque(false);
 		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
-		
-		// Title
+
 		JLabel titleLabel = new JLabel("Review Incoming Changes");
-		titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 16f));
+		titleLabel.setFont(titleLabel.getFont().deriveFont(Font.BOLD, 18f));
+		titleLabel.setForeground(DarkTheme.FG_TEXT);
 		titleLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		panel.add(titleLabel);
-		
+
 		panel.add(Box.createVerticalStrut(8));
-		
-		// Repository info
-		String shortUrl = shortenUrl(repositoryUrl);
-		JLabel repoLabel = new JLabel("Repository: " + shortUrl);
-		repoLabel.setFont(repoLabel.getFont().deriveFont(Font.PLAIN, 12f));
-		repoLabel.setForeground(Color.DARK_GRAY);
+
+		JLabel repoLabel = new JLabel("Repository: " + shortenUrl(repositoryUrl));
+		repoLabel.setForeground(DarkTheme.FG_SUBTLE);
 		repoLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		panel.add(repoLabel);
-		
-		panel.add(Box.createVerticalStrut(8));
-		
-		// Summary
-		String summary = createSummaryText();
-		JLabel summaryLabel = new JLabel("<html>" + summary + "</html>");
+
+		panel.add(Box.createVerticalStrut(12));
+
+		JLabel summaryLabel = new JLabel("<html>" + createSummaryText() + "</html>");
+		summaryLabel.setForeground(DarkTheme.FG_TEXT);
 		summaryLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
 		panel.add(summaryLabel);
-		
-		panel.add(Box.createVerticalStrut(5));
-		
+
 		return panel;
 	}
-	
-	/**
-	 * Create the scrollable panel containing the file changes.
-	 */
+
 	private JScrollPane createChangesScrollPane() {
 		JPanel changesPanel = new JPanel();
 		changesPanel.setLayout(new BoxLayout(changesPanel, BoxLayout.Y_AXIS));
-		changesPanel.setBorder(new EmptyBorder(5, 5, 5, 5));
-		
-		// Added files
+		changesPanel.setBackground(DarkTheme.BG_DARK);
+
 		if (!changes.getAdded().isEmpty()) {
-			JPanel addedPanel = createCategoryPanel("Added", changes.getAdded(), 
-					new Color(40, 167, 69)); // Green
-			changesPanel.add(addedPanel);
+			changesPanel.add(createCategoryPanel("Added", changes.getAdded(), DarkTheme.ACCENT_GREEN));
 			changesPanel.add(Box.createVerticalStrut(10));
 		}
-		
-		// Modified files
 		if (!changes.getModified().isEmpty()) {
-			JPanel modifiedPanel = createCategoryPanel("Modified", changes.getModified(),
-					new Color(255, 193, 7)); // Yellow/Orange
-			changesPanel.add(modifiedPanel);
+			changesPanel.add(createCategoryPanel("Modified", changes.getModified(), DarkTheme.ACCENT_YELLOW));
 			changesPanel.add(Box.createVerticalStrut(10));
 		}
-		
-		// Deleted files
 		if (!changes.getDeleted().isEmpty()) {
-			JPanel deletedPanel = createCategoryPanel("Deleted", changes.getDeleted(),
-					new Color(220, 53, 69)); // Red
-			changesPanel.add(deletedPanel);
+			changesPanel.add(createCategoryPanel("Deleted", changes.getDeleted(), DarkTheme.ACCENT_RED));
 			changesPanel.add(Box.createVerticalStrut(10));
 		}
-		
-		// Renamed files
 		if (!changes.getRenamed().isEmpty()) {
-			JPanel renamedPanel = createCategoryPanel("Renamed", changes.getRenamed(),
-					new Color(23, 162, 184)); // Cyan
-			changesPanel.add(renamedPanel);
+			changesPanel.add(createCategoryPanel("Renamed", changes.getRenamed(), DarkTheme.ACCENT_CYAN));
 		}
 		
 		// Add filler to push content to top
 		changesPanel.add(Box.createVerticalGlue());
-		
+
 		JScrollPane scrollPane = new JScrollPane(changesPanel);
-		scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
-		scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_AS_NEEDED);
+		scrollPane.setBorder(BorderFactory.createLineBorder(DarkTheme.BORDER));
+		scrollPane.getViewport().setBackground(DarkTheme.BG_DARK);
 		scrollPane.getVerticalScrollBar().setUnitIncrement(16);
-		
+
 		return scrollPane;
 	}
 	
@@ -200,39 +165,29 @@ public class ChangeConfirmationDialog {
 	 * Create a panel for a category of file changes.
 	 */
 	private JPanel createCategoryPanel(String title, List<String> files, Color accentColor) {
-		JPanel panel = new JPanel();
-		panel.setLayout(new BoxLayout(panel, BoxLayout.Y_AXIS));
+		JPanel panel = new JPanel(new BorderLayout());
+		panel.setBackground(DarkTheme.BG_LIGHTER);
 		panel.setAlignmentX(Component.LEFT_ALIGNMENT);
-		
-		// Title border with count
-		String borderTitle = String.format("%s (%d file%s)", title, files.size(), 
-				files.size() == 1 ? "" : "s");
+
+		DefaultListModel<String> listModel = new DefaultListModel<>();
+		files.forEach(f -> listModel.addElement(" " + f));
+
+		JList<String> fileList = new JList<>(listModel);
+		fileList.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
+		fileList.setBackground(DarkTheme.BG_LIGHTER);
+		fileList.setForeground(DarkTheme.FG_TEXT);
+		fileList.setSelectionBackground(accentColor.darker().darker());
+
+		String borderTitle = String.format("%s (%d)", title, files.size());
 		TitledBorder border = BorderFactory.createTitledBorder(
-				BorderFactory.createLineBorder(accentColor, 2),
-				borderTitle);
-		border.setTitleColor(accentColor.darker());
-		border.setTitleFont(border.getTitleFont().deriveFont(Font.BOLD));
+				new LineBorder(accentColor, 1), borderTitle);
+		border.setTitleColor(accentColor);
+		border.setTitleFont(new Font(Font.SANS_SERIF, Font.BOLD, 12));
+
 		panel.setBorder(border);
-		
-		// File list
-		int displayCount = Math.min(files.size(), MAX_FILES_PER_CATEGORY);
-		for (int i = 0; i < displayCount; i++) {
-			JLabel fileLabel = new JLabel("  " + files.get(i));
-			fileLabel.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
-			fileLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-			panel.add(fileLabel);
-		}
-		
-		// Show truncation message if needed
-		if (files.size() > MAX_FILES_PER_CATEGORY) {
-			int remaining = files.size() - MAX_FILES_PER_CATEGORY;
-			JLabel moreLabel = new JLabel("  ... and " + remaining + " more file(s)");
-			moreLabel.setFont(moreLabel.getFont().deriveFont(Font.ITALIC));
-			moreLabel.setForeground(Color.GRAY);
-			moreLabel.setAlignmentX(Component.LEFT_ALIGNMENT);
-			panel.add(moreLabel);
-		}
-		
+		panel.add(fileList, BorderLayout.CENTER);
+		panel.setMaximumSize(new Dimension(Integer.MAX_VALUE, panel.getPreferredSize().height));
+
 		return panel;
 	}
 	
@@ -241,83 +196,59 @@ public class ChangeConfirmationDialog {
 	 */
 	private JPanel createButtonPanel(JDialog dialog) {
 		JPanel panel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
-		
-		// Accept button
-		JButton acceptButton = new JButton("Accept Changes");
-		acceptButton.setPreferredSize(new Dimension(150, 35));
-		acceptButton.setBackground(new Color(40, 167, 69));
-		acceptButton.setForeground(Color.WHITE);
-		acceptButton.setFocusPainted(false);
+		panel.setOpaque(false);
+
+		JButton acceptButton = createStyledButton("Accept Changes", DarkTheme.ACCENT_GREEN);
 		acceptButton.addActionListener(e -> {
 			userAccepted = true;
-			EverLoad.LOGGER.info("User accepted changes");
 			dialog.dispose();
 		});
-		panel.add(acceptButton);
-		
-		// Decline button
-		JButton declineButton = new JButton("Decline Changes");
-		declineButton.setPreferredSize(new Dimension(150, 35));
-		declineButton.setBackground(new Color(220, 53, 69));
-		declineButton.setForeground(Color.WHITE);
-		declineButton.setFocusPainted(false);
+
+		JButton declineButton = createStyledButton("Decline Changes", DarkTheme.ACCENT_RED);
 		declineButton.addActionListener(e -> {
 			userAccepted = false;
 			EverLoad.LOGGER.info("User declined changes");
 			dialog.dispose();
 		});
+
+		panel.add(acceptButton);
 		panel.add(declineButton);
-		
 		return panel;
 	}
-	
+
+	private JButton createStyledButton(String text, Color baseColor) {
+		JButton button = new JButton(text);
+		button.setPreferredSize(new Dimension(160, 40));
+		button.setBackground(baseColor.darker());
+		button.setForeground(Color.WHITE);
+		button.setFocusPainted(false);
+		button.setBorder(BorderFactory.createLineBorder(baseColor));
+		button.setCursor(new Cursor(Cursor.HAND_CURSOR));
+		return button;
+	}
+
 	/**
 	 * Create summary text describing the changes.
 	 */
 	private String createSummaryText() {
-		StringBuilder sb = new StringBuilder();
-		
-		if (changes.isFreshClone()) {
-			sb.append("This is a <b>fresh clone</b>. ");
-			sb.append("The following <b>").append(changes.totalChanges()).append(" file(s)</b> ");
-			sb.append("will be copied to your game directory:");
-		} else {
-			sb.append("The following changes will be applied to your game directory:<br>");
-			
-			List<String> parts = new java.util.ArrayList<>();
-			if (changes.addedCount() > 0) {
-				parts.add("<font color='green'>" + changes.addedCount() + " added</font>");
-			}
-			if (changes.modifiedCount() > 0) {
-				parts.add("<font color='orange'>" + changes.modifiedCount() + " modified</font>");
-			}
-			if (changes.deletedCount() > 0) {
-				parts.add("<font color='red'>" + changes.deletedCount() + " deleted</font>");
-			}
-			if (changes.renamedCount() > 0) {
-				parts.add("<font color='teal'>" + changes.renamedCount() + " renamed</font>");
-			}
-			
-			sb.append("<b>").append(String.join(", ", parts)).append("</b>");
-		}
-		
-		return sb.toString();
+		String base = changes.isFreshClone() ? "Fresh clone: " : "Updates: ";
+		return String.format("%s <font color='%s'>%d added</font>, <font color='%s'>%d modified</font>, <font color='%s'>%d deleted</font>",
+				base,
+				toHex(DarkTheme.ACCENT_GREEN), changes.addedCount(),
+				toHex(DarkTheme.ACCENT_YELLOW), changes.modifiedCount(),
+				toHex(DarkTheme.ACCENT_RED), changes.deletedCount());
 	}
-	
-	/**
-	 * Shorten a URL for display purposes.
-	 */
+
+	private String toHex(Color c) {
+		return String.format("#%02x%02x%02x", c.getRed(), c.getGreen(), c.getBlue());
+	}
+
 	private String shortenUrl(String url) {
 		if (url == null) return "Unknown";
 		
 		// Remove protocol
 		String shortened = url.replaceFirst("^https?://", "");
-		
-		// Truncate if too long
-		if (shortened.length() > 50) {
-			shortened = shortened.substring(0, 47) + "...";
-		}
-		
-		return shortened;
+
+		return shortened.length() > 60 ? shortened.substring(0, 57) + "..." : shortened;
 	}
 }
