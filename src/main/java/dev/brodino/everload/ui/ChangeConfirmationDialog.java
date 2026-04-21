@@ -8,6 +8,7 @@ import javax.swing.border.EmptyBorder;
 import javax.swing.border.LineBorder;
 import javax.swing.border.TitledBorder;
 import java.awt.*;
+import java.awt.event.FocusEvent;
 import java.lang.reflect.InvocationTargetException;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -75,6 +76,7 @@ public class ChangeConfirmationDialog {
 		dialog.setSize(DIALOG_WIDTH, DIALOG_HEIGHT);
 		dialog.setLocationRelativeTo(null);
 		dialog.requestFocus();
+		dialog.requestFocusInWindow(FocusEvent.Cause.ACTIVATION);
 		dialog.setResizable(true);
 
 		JPanel mainPanel = new JPanel(new BorderLayout(10, 10));
