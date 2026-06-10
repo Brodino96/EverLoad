@@ -131,14 +131,11 @@ public class FileSyncService {
         }
         
         // Copy file (overwrite if exists)
-        Files.copy(sourceFile, destination, 
-            StandardCopyOption.REPLACE_EXISTING,
-            StandardCopyOption.COPY_ATTRIBUTES);
+        Files.copy(sourceFile, destination, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.COPY_ATTRIBUTES);
         
         long size = Files.size(destination);
         
-        EverLoad.LOGGER.debug("Copied: {} -> {} ({} bytes)",
-            sourceFile.getFileName(), relativePath, size);
+        EverLoad.LOGGER.debug("Copied: {} -> {} ({} bytes)", sourceFile.getFileName(), relativePath, size);
         
         return size;
     }

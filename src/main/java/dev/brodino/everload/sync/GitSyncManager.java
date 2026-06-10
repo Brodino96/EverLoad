@@ -55,51 +55,53 @@ public class GitSyncManager {
         // Reset state tracking
         this.preSyncHead = null;
         this.wasFreshClone = false;
-        
-        if (this.isRepositoryInitialized()) {
-            // Open the repository once and reuse the handle for all read operations,
-            // so we can close it explicitly before any cleanup (critical on Windows
-            // where open pack-file handles block deletion).
-            Git existingGit = null;
-            try {
-                existingGit = Git.open(repoDir);
 
-                // Capture HEAD before pull for change detection
-                this.preSyncHead = this.captureHeadCommit(existingGit);
-
-                String existingUrl = this.readRemoteUrl(existingGit);
-                boolean urlMatches = this.isUrlMatching(repositoryUrl, existingUrl);
-
-                if (urlMatches) {
-                    // Keep the handle open for the pull
-                    this.git = existingGit;
-                    existingGit = null; // ownership transferred – don't close in finally
-                    context.setStatusMessage("Pulling latest changes...");
-                    EverLoad.LOGGER.info("Repository exists, pulling updates from: {}", repoDir);
-                    this.pullRepository(branch, context);
-                } else {
-                    EverLoad.LOGGER.info("Repository URL mismatch. Existing: {}, Configured: {}. Re-cloning...", existingUrl, repositoryUrl);
-                    context.setStatusMessage("Repository changed, re-cloning...");
-                    // Close ALL handles before attempting to delete on Windows
-                    existingGit.close();
-                    existingGit = null;
-                    this.closeGit();
-                    this.cleanupRepository();
-                    this.preSyncHead = null; // No previous state for re-clone
-                    this.wasFreshClone = true;
-                    this.cloneRepository(repositoryUrl, branch, context);
-                }
-            } finally {
-                if (existingGit != null) {
-                    existingGit.close();
-                }
-            }
-        } else {
+        if (!this.isRepositoryInitialized()) {
             // Repository doesn't exist, clone it
             context.setStatusMessage("Cloning repository...");
             EverLoad.LOGGER.info("Cloning repository to: {}", repoDir);
             this.wasFreshClone = true;
             this.cloneRepository(repositoryUrl, branch, context);
+            EverLoad.LOGGER.info("Git sync completed successfully");
+            return;
+        }
+
+        // Open the repository once and reuse the handle for all read operations,
+        // so we can close it explicitly before any cleanup (critical on Windows
+        // where open pack-file handles block deletion).
+        Git existingGit = null;
+        try {
+            existingGit = Git.open(repoDir);
+
+            // Capture HEAD before pull for change detection
+            this.preSyncHead = this.captureHeadCommit(existingGit);
+
+            String existingUrl = this.readRemoteUrl(existingGit);
+            boolean urlMatches = this.isUrlMatching(repositoryUrl, existingUrl);
+
+            if (urlMatches) {
+                // Keep the handle open for the pull
+                this.git = existingGit;
+                existingGit = null; // ownership transferred – don't close in finally
+                context.setStatusMessage("Pulling latest changes...");
+                EverLoad.LOGGER.info("Repository exists, pulling updates from: {}", repoDir);
+                this.pullRepository(branch, context);
+            } else {
+                EverLoad.LOGGER.info("Repository URL mismatch. Existing: {}, Configured: {}. Re-cloning...", existingUrl, repositoryUrl);
+                context.setStatusMessage("Repository changed, re-cloning...");
+                // Close ALL handles before attempting to delete on Windows
+                existingGit.close();
+                existingGit = null;
+                this.closeGit();
+                this.cleanupRepository();
+                this.preSyncHead = null; // No previous state for re-clone
+                this.wasFreshClone = true;
+                this.cloneRepository(repositoryUrl, branch, context);
+            }
+        } finally {
+            if (existingGit != null) {
+                existingGit.close();
+            }
         }
         
         EverLoad.LOGGER.info("Git sync completed successfully");
@@ -160,15 +162,16 @@ public class GitSyncManager {
         
         try {
             var result = pullCommand.call();
-            
-            if (result.isSuccessful()) {
-                EverLoad.LOGGER.info("Pull completed successfully");
-                if (result.getFetchResult() != null) {
-                    this.logFetchResult(result.getFetchResult());
-                }
-            } else {
+
+            if (!result.isSuccessful()) {
                 EverLoad.LOGGER.warn("Pull completed with issues: {}", result);
             }
+
+            EverLoad.LOGGER.info("Pull completed successfully");
+            if (result.getFetchResult() != null) {
+                this.logFetchResult(result.getFetchResult());
+            }
+
         } catch (GitAPIException e) {
             EverLoad.LOGGER.error("Pull failed: {}", e.getMessage(), e);
             throw e;
@@ -227,15 +230,17 @@ public class GitSyncManager {
      * attempting a clone into a non-empty directory.
      */
     private void cleanupRepository() throws IOException {
-        if (Files.exists(repositoryDirectory)) {
-            EverLoad.LOGGER.info("Cleaning up failed repository at: {}", repositoryDirectory);
-            this.deleteRecursively(repositoryDirectory);
-            if (Files.exists(repositoryDirectory)) {
-                throw new IOException(
-                    "Failed to fully remove repository directory (file handles still open?): "
-                    + repositoryDirectory);
-            }
+        if (!Files.exists(repositoryDirectory)) {
+            return;
         }
+
+
+        EverLoad.LOGGER.info("Cleaning up failed repository at: {}", repositoryDirectory);
+        this.deleteRecursively(repositoryDirectory);
+        if (Files.exists(repositoryDirectory)) {
+            throw new IOException("Failed to fully remove repository directory (file handles still open?): " + repositoryDirectory);
+        }
+
     }
 
     private void deleteRecursively(Path path) throws IOException {
@@ -243,7 +248,7 @@ public class GitSyncManager {
             return;
         }
         if (!Files.isDirectory(path)) {
-            deleteWithRetry(path);
+            this.deleteWithRetry(path);
             return;
         }
         try (var stream = Files.list(path)) {

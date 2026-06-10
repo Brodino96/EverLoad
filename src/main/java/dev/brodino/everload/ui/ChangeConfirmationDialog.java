@@ -246,9 +246,9 @@ public class ChangeConfirmationDialog {
 		String base = changes.isFreshClone() ? "Fresh clone: " : "Updates: ";
 		return String.format("%s <font color='%s'>%d added</font>, <font color='%s'>%d modified</font>, <font color='%s'>%d deleted</font>",
 				base,
-				toHex(DarkTheme.ACCENT_GREEN), changes.addedCount(),
-				toHex(DarkTheme.ACCENT_YELLOW), changes.modifiedCount(),
-				toHex(DarkTheme.ACCENT_RED), changes.deletedCount());
+				toHex(DarkTheme.ACCENT_GREEN), changes.getAddedCount(),
+				toHex(DarkTheme.ACCENT_YELLOW), changes.getModifiedCount(),
+				toHex(DarkTheme.ACCENT_RED), changes.getDeletedCount());
 	}
 
 	private String toHex(Color c) {

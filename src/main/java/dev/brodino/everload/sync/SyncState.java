@@ -8,7 +8,5 @@ public enum SyncState {
     FAILED,
     CANCELLED;
 
-    public boolean isActive() {
-        return this == IN_PROGRESS || this == AWAITING_CONFIRMATION;
-    }
+    public boolean isActive() { return this == IN_PROGRESS || this == AWAITING_CONFIRMATION; }
 }

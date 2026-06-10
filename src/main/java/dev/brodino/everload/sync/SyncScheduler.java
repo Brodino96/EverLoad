@@ -107,7 +107,7 @@ public class SyncScheduler {
             currentContext.setState(SyncState.AWAITING_CONFIRMATION);
             currentContext.setStatusMessage("Waiting for user confirmation...");
             
-            EverLoad.LOGGER.info("Showing confirmation dialog for {} changes", changes.totalChanges());
+            EverLoad.LOGGER.info("Showing confirmation dialog for {} changes", changes.getTotalChanges());
             
             ChangeConfirmationDialog dialog = new ChangeConfirmationDialog(
                     changes, 
